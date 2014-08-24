@@ -6,32 +6,18 @@ output: html_document
 ---
 ##Background
 
-Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement – a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geek. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: http://groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset).
-
-
-## Summary
-
-Six male participants aged between 20-28 years, were asked to perform one set of 10 repetitions
-of the Unilateral Dumbbell Biceps Curl in five different ways [Velloso, E. _et al._, 2013].
-Correctly according to a specification (Class **A**) and with a set of common mistakes: throwing
-the elbows to the front (Class **B**), lifting the dumbbell only halfway (Class **C**), lowering
-the dumbbell only halfway (Class **D**) and throwing the hips to the front (Class **E**). The goal
-of this project is to use data from wearable sensors mounted in the user's glove, armband, lumbar
-belt and dumbbell in order to build a machine learning algorithm to predict the manner in which
-they did exercise (outcome: **_classe_**) and therefore access the quality of the exercise.  
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement – a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geek. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: http://groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset).  
 
 The data for this project and the original paper describing the experiment are available
 [here](http://groupware.les.inf.puc-rio.br/har).
 
-## Loading and Partitioning Data
+## Loading data and Libraries
 
-```{r dataPartition, echo=FALSE, tidy=TRUE}
+```{r, echo=TRUE, tidy=TRUE}
 library(caret, quietly = T); library(randomForest, quietly = T)
-library(corrplot, quietly = T); library(dplyr, quietly = TRUE)
+library(corrplot, quietly = T); library(dplyr, quietly = T)
 set.seed(1234)
 ```
-
-Load data
 
 ```{r LoadData}
 train <- read.csv("pml-training.csv", na.strings=c("NA", "#DIV/0!", ""), strip.white = T)
@@ -39,15 +25,15 @@ test <- read.csv("pml-testing.csv", na.strings=c("NA","#DIV/0!",""), strip.white
 dim(train)
 ```
 
-
-Remove columns with NA values
+### Data Preprocessing
+Many columns consisisst entirely of NA's and are not germaine to the analysis so we will remove all columns with NA values
 
 ```{r RemoveNAs}
 train <- train[ ,apply(train, 2, function(x) sum(is.na(x)) == 0)]
 test <- test[ ,apply(test, 2, function(x) sum(is.na(x)) == 0)]
 ```
 
-Remove columns not useful for this analysis
+In addition, the first 7 columns contain personal data and other non useful information for this anaysis.
 
 ```{r UnnecessaryColumns}
 train <- train[, 8:60]
@@ -56,7 +42,8 @@ dim(train)
 dim(test)
 ``` 
 
-Check for highly correlated columns
+Next, it is possible that some of the variables are highly correlated and will not add any useful information to the analysis. Plot and check for highly correlated columns and remove any with correlation values greater than 90%
+
 ```{r}
 CorrelationCheck <- cor(select(train,-classe))
 corrplot(CorrelationCheck, method="color", tl.pos="n")
@@ -66,37 +53,36 @@ train <- train[,-HighlyCorrelated]
 dim(train)
 ```
 
+### Training a model
+
+Given the large number of predictors, I have chosen to use the Random Forests 
+algorithm to develop a model.
 
 ```{r Apply a model}
-set.seed(1234)
 model <- randomForest(classe ~ ., data = train)
-#model <- train(classe ~ ., data=train, method="rf",
-#               trControl=trainControl(method="cv", number=10))
 model
 ```
 
-Plot model
-```{r Plot}
-plot(model, log = "y", lwd = 2, main = "Model Accuracy")
-```
-
-Check for variable importance
+The OOB error rate estimate is very low at 0.3% and looking at the confusion matrix seems to indicate that the prediction model is very good
+ 
+Checking for variable importance may lead us to a simpler model that may run faster withou affecting the accuracy of the model.
 
 ```{r}
 imp <- varImp(model)
 imp$Variable <- row.names(imp)
 imp[order(imp$Overall, decreasing = T),]
 ```
-The most important variable appear to be 
 
-## Model Validation
+The most important variable(s) appear to be yaw belt followed closely by  magnet dumbell-z, pitch belt, pitch forearm, and magnet dumbell-y
+
+## Test Set Prediction
+
+Finally wee need to apply the model to the test set of 20 observations 
+
 
 ```{r}
-test_pred <- predict(model, newdata=test)
-test_pred
-```
-
-```{r eval=F}
 predict(model, newdata = test)
 ```
 
+## Conclusion
+The Random Forest model predicts the trainng set with very good accuracy with an out of bag error estimate of approximately 0.3 %
